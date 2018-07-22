@@ -116,6 +116,8 @@ func (a API) Queue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	j.binaryPath = a.Filepath(j.Binary)
+
 	a.Jobs <- j
 
 	w.WriteHeader(http.StatusCreated)
