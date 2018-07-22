@@ -9,15 +9,13 @@ import (
 	"github.com/jspc/loadtest"
 )
 
-type Client struct {
-	Users    int
-	Duration time.Duration
-	Binary   string
+type Job struct {
+	Users    int    `json:"users"`
+	Duration int64  `json:"duration"`
+	Binary   string `json:"binary"`
 }
 
-func (c Client) Start() {
-	// copy c.Bunary to /tmp/whatever
-	// make /tmp/whatever executable
+func (j Job) Start() {
 	// start /tmp/whatever and slurp it's STDOUT
 	// send stdout somewhere
 
@@ -39,5 +37,5 @@ func (c Client) Start() {
 		}
 	}()
 
-	time.Sleep(c.Duration)
+	time.Sleep(time.Duration(j.Duration) * time.Second)
 }
