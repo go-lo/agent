@@ -1,13 +1,21 @@
 package main
 
 import (
-	"time"
+	"net/http"
 )
 
 func main() {
-	c := Client{
-		Duration: 5 * time.Second,
+	jobs := make(chan Job)
+	api := API{
+		UploadDir: "/tmp/",
+		Jobs:      jobs,
 	}
 
-	c.Start()
+	go func() {
+		for j := range jobs {
+			j.Start()
+		}
+	}()
+
+	panic(http.ListenAndServe(":8081", api))
 }
