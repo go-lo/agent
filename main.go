@@ -5,10 +5,11 @@ import (
 )
 
 func main() {
-	jobs := make(chan Job)
+	jobs := make(chan Job, 1024)
 	api := API{
 		UploadDir: "/tmp/",
 		Jobs:      jobs,
+		Binaries:  NewBinaries(),
 	}
 
 	go func() {

@@ -3,31 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"path/filepath"
-
-	"github.com/satori/go.uuid"
 )
-
-type Binaries []string
-
-func (b Binaries) Valid(n string) bool {
-	for _, i := range b {
-		if i == n {
-			return true
-		}
-	}
-
-	return false
-}
 
 type API struct {
 	UploadDir string
 	Jobs      chan Job
-	Binaries  Binaries
+	Binaries  *Binaries
 }
 
 func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -62,27 +45,17 @@ func (a *API) Upload(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 
-	fn, fp, err := a.Filename()
+	bin, err := newBinary(a.UploadDir, file)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		return
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	f, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0755)
+	err = a.Binaries.Add(bin)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		return
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	defer f.Close()
-
-	io.Copy(f, file)
-
-	a.Binaries = append(a.Binaries, fn)
-
-	fmt.Fprintf(w, `{"binary": "%s"}`, fn)
+	fmt.Fprintf(w, `{"binary": "%s"}`, bin.Name)
 }
 
 func (a API) Queue(w http.ResponseWriter, r *http.Request) {
@@ -116,26 +89,10 @@ func (a API) Queue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	j.binaryPath = a.Filepath(j.Binary)
+	j.bin = (*a.Binaries)[j.Binary]
 
 	a.Jobs <- j
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{"queued": true}`)
-}
-
-func (a API) Filename() (n, f string, err error) {
-	u, err := uuid.NewV4()
-	if err != nil {
-		return
-	}
-
-	n = u.String()
-	f = a.Filepath(n)
-
-	return
-}
-
-func (a API) Filepath(f string) string {
-	return filepath.Join(a.UploadDir, f)
 }
