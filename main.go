@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"log"
 	"net/http"
@@ -17,10 +18,15 @@ const (
 
 var (
 	collector = flag.String("collector", "http://localhost:8082", "Collector endpoint")
+	insecure  = flag.Bool("insecure", false, "Allow access to https endpoints with shit certs")
 )
 
 func main() {
 	flag.Parse()
+
+	if *insecure {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 
 	jobs := make(chan Job, 32)
 
