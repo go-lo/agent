@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"time"
@@ -14,7 +15,13 @@ const (
 	DeadLetterDatabase = "dead_letter"
 )
 
+var (
+	collector = flag.String("collector", "http://localhost:8082", "Collector endpoint")
+)
+
 func main() {
+	flag.Parse()
+
 	jobs := make(chan Job, 32)
 
 	api := API{
@@ -23,7 +30,7 @@ func main() {
 		Binaries:  NewBinaries(),
 	}
 
-	collector, err := NewCollector("http://localhost:8082", DeadLetterDatabase)
+	collector, err := NewCollector(*collector, DeadLetterDatabase)
 	if err != nil {
 		panic(err)
 	}
