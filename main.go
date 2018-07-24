@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jspc/loadtest"
 )
@@ -36,24 +37,32 @@ func main() {
 
 			outputs := make(chan loadtest.Output)
 
+			var lastRead time.Time
 			go func() {
 				for o := range outputs {
+					lastRead = time.Now()
+
 					err := collector.Push(o)
 					if err != nil {
 						log.Print(err)
 					}
 				}
-
 			}()
 
 			j.Start(outputs)
-			close(outputs)
 
+			// Wait until we've received nothing for a second
+			// in the hopes that this is enough for the final
+			// requests to end
+			for {
+				if time.Now().Sub(lastRead).Seconds() > 1.0 {
+					break
+				}
+			}
+
+			close(outputs)
 			log.Printf("ran %d times", j.items)
 		}
-	}()
-
-	go func() {
 	}()
 
 	panic(http.ListenAndServe(":8081", api))
