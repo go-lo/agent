@@ -48,7 +48,6 @@ func (j *Job) Start(outputChan chan loadtest.Output) {
 	if j.Users == 0 {
 		j.Users = DefaultUserCount
 	}
-
 	j.sem = semaphore.New(j.Users)
 
 	go func() {
