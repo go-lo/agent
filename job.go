@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/rpc"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/abiosoft/semaphore"
@@ -40,9 +42,15 @@ type Job struct {
 	service    *rpc.Client
 	outputChan chan loadtest.Output
 	sem        *semaphore.Semaphore
+	logfile    *os.File
 }
 
-func (j *Job) Start(outputChan chan loadtest.Output) {
+func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
+	err = j.openLogFile()
+	if err != nil {
+		return
+	}
+
 	j.outputChan = outputChan
 
 	if j.Users == 0 {
@@ -53,7 +61,7 @@ func (j *Job) Start(outputChan chan loadtest.Output) {
 	go func() {
 		err := j.execute()
 		if err != nil && err != io.EOF {
-			panic(err)
+			return
 		}
 	}()
 
@@ -64,9 +72,9 @@ func (j *Job) Start(outputChan chan loadtest.Output) {
 		}
 	}()
 
-	err := backoff.Retry(j.TryConnect, backoff.NewExponentialBackOff())
+	err = backoff.Retry(j.TryConnect, backoff.NewExponentialBackOff())
 	if err != nil {
-		panic(err)
+		return
 	}
 	defer j.connection.Close()
 
@@ -74,7 +82,7 @@ func (j *Job) Start(outputChan chan loadtest.Output) {
 
 	err = backoff.Retry(j.TryRequest, backoff.NewExponentialBackOff())
 	if err != nil {
-		panic(err)
+		return
 	}
 	defer j.service.Close()
 
@@ -92,7 +100,7 @@ func (j *Job) Start(outputChan chan loadtest.Output) {
 
 				err = j.TryRequest()
 				if err != nil {
-					panic(err)
+					log.Print(err)
 				}
 			}()
 		}
@@ -101,6 +109,8 @@ func (j *Job) Start(outputChan chan loadtest.Output) {
 	time.Sleep(time.Duration(j.Duration) * time.Second)
 
 	j.complete = true
+
+	return
 }
 
 func (j *Job) TryConnect() (err error) {
@@ -149,6 +159,8 @@ func (j *Job) execute() (err error) {
 			return
 		}
 
+		go j.logline(line)
+
 		// For now we unmarshal output back into a loadtest.Output
 		// as a way of ensuring the content read from the binary is
 		// valid to be sent to the collector endpoint. This is to ensure
@@ -173,4 +185,21 @@ func (j *Job) execute() (err error) {
 		j.items++
 		j.outputChan <- *o
 	}
+}
+
+func (j *Job) openLogFile() (err error) {
+	os.MkdirAll(*logDir, os.ModePerm)
+	p := filepath.Join(*logDir, j.Name)
+
+	j.logfile, err = os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0644)
+
+	return
+}
+
+func (j Job) closeLogFile() (err error) {
+	return j.logfile.Close()
+}
+
+func (j Job) logline(line []byte) {
+	fmt.Fprintln(j.logfile, line)
 }

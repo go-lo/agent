@@ -19,6 +19,7 @@ const (
 var (
 	collector = flag.String("collector", "http://localhost:8082", "Collector endpoint")
 	insecure  = flag.Bool("insecure", false, "Allow access to https endpoints with shit certs")
+	logDir    = flag.String("logs", "/var/log/loadtest-agent", "Dir to log to")
 )
 
 func main() {
@@ -62,7 +63,10 @@ func main() {
 				}
 			}()
 
-			j.Start(outputs)
+			err = j.Start(outputs)
+			if err != nil {
+				log.Print(err)
+			}
 
 			log.Print("Entering cooldown period")
 
