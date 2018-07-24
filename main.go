@@ -64,13 +64,17 @@ func main() {
 
 			j.Start(outputs)
 
-			// Wait until we've received nothing for a second
+			log.Print("Entering cooldown period")
+
+			// Wait until we've received nothing for a minute
 			// in the hopes that this is enough for the final
 			// requests to end
 			for {
-				if time.Now().Sub(lastRead).Seconds() > 1.0 {
+				if time.Now().Sub(lastRead).Seconds() > 60.0 {
 					break
 				}
+
+				time.Sleep(500 * time.Millisecond)
 			}
 
 			close(outputs)
