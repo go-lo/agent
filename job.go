@@ -39,10 +39,12 @@ type Job struct {
 	connection net.Conn
 	setup      bool
 	complete   bool
+	success    bool
 	service    *rpc.Client
 	outputChan chan loadtest.Output
 	sem        *semaphore.Semaphore
 	logfile    *os.File
+	errfile    *os.File
 }
 
 func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
@@ -71,6 +73,11 @@ func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
 			j.process.Wait()
 		}
 	}()
+
+	// // Ensure process is still up
+	// go func() {
+
+	// }()
 
 	err = backoff.Retry(j.TryConnect, backoff.NewExponentialBackOff())
 	if err != nil {
@@ -135,7 +142,32 @@ func (j *Job) TryRequest() (err error) {
 }
 
 func (j *Job) execute() (err error) {
+	defer func() {
+		j.complete = true
+	}()
 	cmd := exec.Command(j.bin.Path)
+
+	// log stderr straight out
+	go func() {
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			return
+		}
+
+		stderrReader := bufio.NewReader(stderr)
+		for {
+			if j.complete {
+				return
+			}
+
+			// silently drop read errors on STDERR
+			errorLine, err := stderrReader.ReadBytes('\n')
+			if err == nil {
+				j.logerr(errorLine)
+			}
+		}
+
+	}()
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -188,10 +220,19 @@ func (j *Job) execute() (err error) {
 }
 
 func (j *Job) openLogFile() (err error) {
-	os.MkdirAll(*logDir, os.ModePerm)
-	p := filepath.Join(*logDir, j.Name)
+	os.MkdirAll(filepath.Join(*logDir, j.Name), os.ModePerm)
+	logPath := filepath.Join(*logDir, j.Name, "out.log")
+	errPath := filepath.Join(*logDir, j.Name, "err.log")
 
-	j.logfile, err = os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0644)
+	j.logfile, err = os.OpenFile(logPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return
+	}
+
+	j.errfile, err = os.OpenFile(errPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return
+	}
 
 	return
 }
@@ -200,6 +241,14 @@ func (j Job) closeLogFile() (err error) {
 	return j.logfile.Close()
 }
 
+func (j Job) logerr(line []byte) {
+	j.log(j.errfile, line)
+}
+
 func (j Job) logline(line []byte) {
-	fmt.Fprintln(j.logfile, line)
+	j.log(j.logfile, line)
+}
+
+func (j Job) log(f *os.File, line []byte) {
+	fmt.Fprint(f, string(line))
 }
