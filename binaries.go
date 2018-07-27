@@ -38,7 +38,7 @@ func (c *Binaries) Valid(s string) bool {
 type binary struct {
 	Name     string
 	Path     string
-	Uploaded *time.Time
+	Uploaded time.Time
 }
 
 func newBinary(dir string, data io.Reader) (b binary, err error) {
