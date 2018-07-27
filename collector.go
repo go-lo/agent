@@ -23,6 +23,12 @@ type Collector struct {
 }
 
 func NewCollector(host, db string) (c Collector, err error) {
+	if host == "" {
+		err = fmt.Errorf("Host cannot be empty")
+
+		return
+	}
+
 	u, err := url.Parse(host)
 	if err != nil {
 		return
