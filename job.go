@@ -48,8 +48,8 @@ type Job struct {
 	service    rpcClient
 	outputChan chan loadtest.Output
 	sem        *semaphore.Semaphore
-	logfile    *os.File
-	errfile    *os.File
+	logfile    io.Writer
+	errfile    io.Writer
 }
 
 func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
@@ -242,10 +242,6 @@ func (j *Job) openLogFile() (err error) {
 	return
 }
 
-func (j Job) closeLogFile() (err error) {
-	return j.logfile.Close()
-}
-
 func (j Job) logerr(line []byte) {
 	j.log(j.errfile, line)
 }
@@ -254,6 +250,6 @@ func (j Job) logline(line []byte) {
 	j.log(j.logfile, line)
 }
 
-func (j Job) log(f *os.File, line []byte) {
+func (j Job) log(f io.Writer, line []byte) {
 	fmt.Fprint(f, string(line))
 }
