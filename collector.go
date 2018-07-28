@@ -15,7 +15,6 @@ type httpClient interface {
 }
 
 type Collector struct {
-	Host     string
 	Database string
 
 	client  httpClient
