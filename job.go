@@ -42,18 +42,21 @@ type Job struct {
 	Duration int64  `json:"duration"`
 	Binary   string `json:"binary"`
 
-	bin        binary
-	items      int
-	process    *os.Process
-	connection net.Conn
-	setup      bool
-	complete   bool
-	success    bool
-	service    rpcClient
-	outputChan chan loadtest.Output
-	sem        *semaphore.Semaphore
-	logfile    io.Writer
-	errfile    io.Writer
+	bin           binary
+	items         int
+	process       *os.Process
+	connection    net.Conn
+	setup         bool
+	complete      bool
+	success       bool
+	dropRPCErrors bool
+	service       rpcClient
+	outputChan    chan loadtest.Output
+	sem           *semaphore.Semaphore
+	stdout        *bufio.Reader
+	stderr        *bufio.Reader
+	logfile       io.Writer
+	errfile       io.Writer
 }
 
 func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
@@ -62,10 +65,15 @@ func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
 		return
 	}
 
+	err = j.execute()
+	if err != nil {
+		return
+	}
+
 	go func() {
-		err := j.execute()
+		err := j.tail()
 		if err != nil && err != io.EOF {
-			return
+			log.Print(err)
 		}
 	}()
 
@@ -97,7 +105,7 @@ func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
 				defer j.sem.Release()
 
 				err = j.TryRequest()
-				if err != nil {
+				if err != nil && !j.dropRPCErrors {
 					log.Print(err)
 				}
 			}()
@@ -164,39 +172,21 @@ func (j *Job) TryRequest() (err error) {
 }
 
 func (j *Job) execute() (err error) {
-	defer func() {
-		j.complete = true
-	}()
 	cmd := exec.Command(j.bin.Path)
 
-	// log stderr straight out
-	go func() {
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			return
-		}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return
+	}
 
-		stderrReader := bufio.NewReader(stderr)
-		for {
-			if j.complete {
-				return
-			}
-
-			// silently drop read errors on STDERR
-			errorLine, err := stderrReader.ReadBytes('\n')
-			if err == nil {
-				j.logerr(errorLine)
-			}
-		}
-
-	}()
+	j.stderr = bufio.NewReader(stderr)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return
 	}
 
-	rd := bufio.NewReader(stdout)
+	j.stdout = bufio.NewReader(stdout)
 
 	err = cmd.Start()
 	if err != nil {
@@ -205,39 +195,80 @@ func (j *Job) execute() (err error) {
 
 	j.process = cmd.Process
 
+	return
+}
+
+func (j *Job) tail() (err error) {
+	defer func() {
+		j.complete = true
+	}()
+
+	// log stderr straight out
+	go func() {
+		for {
+			if j.stderr == nil {
+				continue
+			}
+
+			if j.complete {
+				return
+			}
+
+			scanner := bufio.NewScanner(j.stderr)
+			for scanner.Scan() {
+				j.logerr(scanner.Bytes())
+			}
+
+			if err := scanner.Err(); err != nil {
+				continue
+			}
+		}
+	}()
+
 	for {
+		if j.complete {
+			return
+		}
+
 		var line []byte
 
-		line, err = rd.ReadBytes('\n')
-		if err != nil {
-			return
+		scanner := bufio.NewScanner(j.stdout)
+		for scanner.Scan() {
+			line = scanner.Bytes()
+			go j.logline(line)
+
+			// For now we unmarshal output back into a loadtest.Output
+			// as a way of ensuring the content read from the binary is
+			// valid to be sent to the collector endpoint. This is to ensure
+			// that the collector has largely decent data to work with, and
+			// that if there any errors we can get that data from an agent
+			// running the test, rather than picking it out of the collector
+			// logs and trying to traceback to where the data came from.
+			//
+			// The downside to all of this is the latency and complexity
+			// of all of this unmarshalling/ marshalling back and forth.
+			// It's also a bit of a false assumption- if the body of the
+			// line from the scheduler is a valid json object then we're
+			// still going to have a loadtest.Output- it just either wont
+			// contain anything, or what it does contain will be garbage.
+			o := new(loadtest.Output)
+
+			err = json.Unmarshal(line, o)
+			if err != nil {
+				log.Print(string(line))
+				log.Print(err)
+
+				return
+			}
+
+			j.items++
+			j.outputChan <- *o
 		}
 
-		go j.logline(line)
-
-		// For now we unmarshal output back into a loadtest.Output
-		// as a way of ensuring the content read from the binary is
-		// valid to be sent to the collector endpoint. This is to ensure
-		// that the collector has largely decent data to work with, and
-		// that if there any errors we can get that data from an agent
-		// running the test, rather than picking it out of the collector
-		// logs and trying to traceback to where the data came from.
-		//
-		// The downside to all of this is the latency and complexity
-		// of all of this unmarshalling/ marshalling back and forth.
-		// It's also a bit of a false assumption- if the body of the
-		// line from the scheduler is a valid json object then we're
-		// still going to have a loadtest.Output- it just either wont
-		// contain anything, or what it does contain will be garbage.
-		o := new(loadtest.Output)
-
-		err = json.Unmarshal(line, o)
-		if err != nil {
-			return
+		if err := scanner.Err(); err != nil {
+			continue
 		}
 
-		j.items++
-		j.outputChan <- *o
 	}
 }
 
