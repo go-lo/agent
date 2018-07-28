@@ -19,12 +19,16 @@ import (
 )
 
 const (
-	// RPCommand is the command to request from our RPC'd up scheduler
-	RPCCommand = "Server.Run"
-
 	// DefaultUserCount is the default number of users to run loadtests
 	// to simulate when not specified/ missing
 	DefaultUserCount = 25
+)
+
+var (
+	// RPCommand is the command to request from our RPC'd up scheduler
+	RPCCommand = "Server.Run"
+
+	expoBackoff = backoff.NewExponentialBackOff()
 )
 
 type rpcClient interface {
