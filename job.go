@@ -27,6 +27,11 @@ const (
 	DefaultUserCount = 25
 )
 
+type rpcClient interface {
+	Call(string, interface{}, interface{}) error
+	Close() error
+}
+
 type Job struct {
 	Name     string `json:"name"`
 	Users    int    `json:"users"`
@@ -40,7 +45,7 @@ type Job struct {
 	setup      bool
 	complete   bool
 	success    bool
-	service    *rpc.Client
+	service    rpcClient
 	outputChan chan loadtest.Output
 	sem        *semaphore.Semaphore
 	logfile    *os.File
