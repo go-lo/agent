@@ -1,4 +1,4 @@
-default: clean build
+default: clean test build docker
 
 .PHONY: build
 build: clean loadtest-agent
@@ -9,6 +9,14 @@ loadtest-agent:
 .PHONY: clean
 clean:
 	-rm loadtest-agent
+
+.PHONY: test
+test: deps
+	go test -v -covermode=count -coverprofile="./count.out" ./...
+
+.PHONY: deps
+deps:
+	go get -u -v ./...
 
 .PHONY: docker
 docker:

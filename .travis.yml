@@ -1,7 +1,23 @@
-language: go
+sudo: required
+services:
+  - docker
 
+language: go
 go:
   - "1.x"
   - "1.8"
   - "1.10.x"
   - master
+
+before_install:
+  - make deps
+
+script:
+  - make test
+  - make clean build
+
+# deploy:
+#   provider: script
+#   script: make deploy
+#   on:
+#     branch: master
