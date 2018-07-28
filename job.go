@@ -57,17 +57,10 @@ type Job struct {
 }
 
 func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
-	err = j.openLogFile()
+	err = j.initialiseJob(outputChan)
 	if err != nil {
 		return
 	}
-
-	j.outputChan = outputChan
-
-	if j.Users == 0 {
-		j.Users = DefaultUserCount
-	}
-	j.sem = semaphore.New(j.Users)
 
 	go func() {
 		err := j.execute()
@@ -83,23 +76,12 @@ func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
 		}
 	}()
 
-	// // Ensure process is still up
-	// go func() {
-
-	// }()
-
-	err = backoff.Retry(j.TryConnect, backoff.NewExponentialBackOff())
+	err = j.initialiseRPC()
 	if err != nil {
 		return
 	}
+
 	defer j.connection.Close()
-
-	j.service = rpc.NewClient(j.connection)
-
-	err = backoff.Retry(j.TryRequest, backoff.NewExponentialBackOff())
-	if err != nil {
-		return
-	}
 	defer j.service.Close()
 
 	j.setup = true
@@ -125,6 +107,37 @@ func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
 	time.Sleep(time.Duration(j.Duration) * time.Second)
 
 	j.complete = true
+
+	return
+}
+
+func (j *Job) initialiseJob(outputChan chan loadtest.Output) (err error) {
+	err = j.openLogFile()
+	if err != nil {
+		return
+	}
+
+	j.outputChan = outputChan
+
+	if j.Users == 0 {
+		j.Users = DefaultUserCount
+	}
+	j.sem = semaphore.New(j.Users)
+
+	return
+}
+
+func (j *Job) initialiseRPC() (err error) {
+	err = backoff.Retry(j.TryConnect, expoBackoff)
+	if err != nil {
+		return
+	}
+	expoBackoff.Reset()
+
+	j.service = rpc.NewClient(j.connection)
+
+	err = backoff.Retry(j.TryRequest, expoBackoff)
+	expoBackoff.Reset()
 
 	return
 }
