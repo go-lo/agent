@@ -326,11 +326,20 @@ func TestJob_Tail(t *testing.T) {
 				outputChan: make(chan golo.Output, 1),
 			}
 
+			go func() {
+				// Let buffers fill a bit
+				time.Sleep(1 * time.Second)
+				j.complete = true
+			}()
+
 			var output golo.Output
 			go func() {
 				output = <-j.outputChan
 
-				j.complete = true
+				// discard the rest
+				for {
+					<-j.outputChan
+				}
 			}()
 
 			err := j.tail()
