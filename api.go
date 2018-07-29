@@ -57,11 +57,15 @@ func (a *API) Upload(w http.ResponseWriter, r *http.Request) {
 	bin, err := newBinary(a.UploadDir, file)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
 	}
 
 	err = a.Binaries.Add(bin)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
 	}
 
 	fmt.Fprintf(w, `{"binary": "%s"}`, bin.Name)
