@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	// RPCommand is the command to request from our RPC'd up scheduler
+	// RPCCommand is the command to request from our RPC'd up scheduler
 	RPCCommand = "Server.Run"
 
 	expoBackoff = backoff.NewExponentialBackOff()
@@ -36,6 +36,10 @@ type rpcClient interface {
 	Close() error
 }
 
+// Job contains both the input data from a call to the queue endpoint
+// on the API (So: name, binary, etc.) and metadata for the running of
+// this job, including process information, service clients, stdout/err
+// and flags to determine whether the job is complete
 type Job struct {
 	Name     string `json:"name"`
 	Users    int    `json:"users"`
@@ -59,6 +63,9 @@ type Job struct {
 	errfile       io.Writer
 }
 
+// Start will, given a valid output chan hooked up to a collector client,
+// start a loadtest schedule binary, slurp it's stdout/err and then stop it
+// once j.Duration seconds pass
 func (j *Job) Start(outputChan chan golo.Output) (err error) {
 	err = j.initialiseJob(outputChan)
 	if err != nil {
@@ -150,6 +157,8 @@ func (j *Job) initialiseRPC() (err error) {
 	return
 }
 
+// TryConnect tests whether the loadtest schedule binary is
+// up and listening on the correct address
 func (j *Job) TryConnect() (err error) {
 	log.Print("try connect")
 	j.connection, err = net.Dial("tcp", golo.RPCAddr)
@@ -157,6 +166,11 @@ func (j *Job) TryConnect() (err error) {
 	return
 }
 
+// TryRequest will run an RPC call to the golo RPC server
+// listening on https://godoc.org/github.com/go-lo/go-lo#Server.Run
+// it's used to test whether a schedule is ready to be run (via
+// exponential backoff) and then, once ready, to actuall perform
+// tests
 func (j *Job) TryRequest() (err error) {
 	if !j.setup {
 		log.Print("try request")

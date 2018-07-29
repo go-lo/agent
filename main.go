@@ -38,6 +38,9 @@ func main() {
 	panic(http.ListenAndServe(":8081", api))
 }
 
+// Setup prepares an agent to be run by
+// validating and setting it's internal http client,
+// API Server, and initialising a job queue
 func Setup(insecure bool, collectorEndpoint, binariesDir string) (a API, c Collector, err error) {
 	if insecure {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -57,6 +60,14 @@ func Setup(insecure bool, collectorEndpoint, binariesDir string) (a API, c Colle
 	return
 }
 
+// JobHandler iterates over a job queue and runs them
+// It first executes a job, then listens to its output chan
+// which it passes on to the collector client to deal with.
+//
+// It also ensures that all outputs are dealt with before
+// closing the output chan by enforcing a cooldown period. This
+// cooldown period is an amount of time to receive no data before
+// accepting the job is over and dealt with
 func JobHandler(collector Collector, jobs chan Job) {
 	for j := range jobs {
 		if j.Name == "" {

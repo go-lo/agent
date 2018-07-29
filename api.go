@@ -7,6 +7,9 @@ import (
 	"net/http"
 )
 
+// API exposes two routes:
+//  1. `POST /upload` which takes a schedule binary, gives it an ID, and stores it
+//  2. `POST /queue` which takes a Job and puts it in a queue to run
 type API struct {
 	UploadDir string
 	Jobs      chan Job
@@ -26,6 +29,12 @@ func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Upload takes a form (see `html/upload.html' to see what this may look like)
+// and reads an updloaded file from it which it then stores.
+//
+// There are no size constraints on this.
+//
+// This binary is given a newly minted UUID and then saved as filepath.Join(a.UploadDir, uuid)
 func (a *API) Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, fmt.Sprintf("Method %q is not supported", r.Method), http.StatusMethodNotAllowed)
@@ -58,6 +67,9 @@ func (a *API) Upload(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"binary": "%s"}`, bin.Name)
 }
 
+// Queue takes a Job, in json form, with a UUID returned by a.Upload() set as `Binary`.
+// From there it validates this binary is a valid within a.Binaries, and queues it
+// for running
 func (a API) Queue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, fmt.Sprintf("Method %q is not supported", r.Method), http.StatusMethodNotAllowed)
