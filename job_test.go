@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 type dummyRPCClient struct {
@@ -42,7 +42,7 @@ type DummyServer struct {
 	err bool
 }
 
-func (s DummyServer) Run(_ *loadtest.NullArg, _ *loadtest.NullArg) error {
+func (s DummyServer) Run(_ *golo.NullArg, _ *golo.NullArg) error {
 	dummyServerCalls++
 
 	if s.err && dummyServerCalls > 1 {
@@ -173,7 +173,7 @@ func TestJob_Initialise(t *testing.T) {
 				j.Users = *test.users
 			}
 
-			err := j.initialiseJob(make(chan loadtest.Output))
+			err := j.initialiseJob(make(chan golo.Output))
 			if test.expectError && err == nil {
 				t.Errorf("expected error")
 			}
@@ -203,7 +203,7 @@ func TestJob_InitialiseRPC(t *testing.T) {
 	})
 
 	t.Run("with running rpc server", func(t *testing.T) {
-		l, _ := net.Listen("tcp", loadtest.RPCAddr)
+		l, _ := net.Listen("tcp", golo.RPCAddr)
 		defer l.Close()
 
 		s := rpc.NewServer()
@@ -272,7 +272,7 @@ func TestJob_Start(t *testing.T) {
 			}
 
 			if test.doRPC {
-				l, _ := net.Listen("tcp", loadtest.RPCAddr)
+				l, _ := net.Listen("tcp", golo.RPCAddr)
 				defer l.Close()
 
 				s := rpc.NewServer()
@@ -280,7 +280,7 @@ func TestJob_Start(t *testing.T) {
 				go s.Accept(l)
 			}
 
-			err := test.job.Start(make(chan loadtest.Output))
+			err := test.job.Start(make(chan golo.Output))
 			if test.expectError && err == nil {
 				t.Errorf("expected error")
 			}
@@ -296,7 +296,7 @@ func TestJob_Tail(t *testing.T) {
 	output := `{"sequenceID":"abc123","url":"http://example.com/","method":"GET","status":200,"size":5252,"timestamp":"2018-07-28T14:19:16.343573885+01:00","duration":1000,"error":null}`
 
 	ts, _ := time.Parse("2006-01-02T15:04:05.999999999-07:00", "2018-07-28T14:19:16.343573885+01:00")
-	expect := loadtest.Output{
+	expect := golo.Output{
 		SequenceID: "abc123",
 		URL:        "http://example.com/",
 		Method:     "GET",
@@ -311,11 +311,11 @@ func TestJob_Tail(t *testing.T) {
 		name        string
 		stdout      string
 		stderr      string
-		expect      loadtest.Output
+		expect      golo.Output
 		expectError bool
 	}{
 		{"valid output", output, "", expect, false},
-		//		{"invalid output", "{{", "", loadtest.Output{}, true},
+		//		{"invalid output", "{{", "", golo.Output{}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			j := Job{
@@ -323,10 +323,10 @@ func TestJob_Tail(t *testing.T) {
 				errfile:    new(bytes.Buffer),
 				stdout:     bufio.NewReader(strings.NewReader(test.stdout)),
 				stderr:     bufio.NewReader(strings.NewReader(test.stderr)),
-				outputChan: make(chan loadtest.Output, 1),
+				outputChan: make(chan golo.Output, 1),
 			}
 
-			var output loadtest.Output
+			var output golo.Output
 			go func() {
 				output = <-j.outputChan
 

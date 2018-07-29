@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 const (
@@ -64,7 +64,7 @@ func JobHandler(collector Collector, jobs chan Job) {
 		}
 		collector.Database = j.Name
 
-		outputs := make(chan loadtest.Output)
+		outputs := make(chan golo.Output)
 
 		var lastRead time.Time
 		go func() {

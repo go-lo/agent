@@ -15,7 +15,7 @@ import (
 
 	"github.com/abiosoft/semaphore"
 	"github.com/cenkalti/backoff"
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 const (
@@ -51,7 +51,7 @@ type Job struct {
 	success       bool
 	dropRPCErrors bool
 	service       rpcClient
-	outputChan    chan loadtest.Output
+	outputChan    chan golo.Output
 	sem           *semaphore.Semaphore
 	stdout        *bufio.Reader
 	stderr        *bufio.Reader
@@ -59,7 +59,7 @@ type Job struct {
 	errfile       io.Writer
 }
 
-func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
+func (j *Job) Start(outputChan chan golo.Output) (err error) {
 	err = j.initialiseJob(outputChan)
 	if err != nil {
 		return
@@ -119,7 +119,7 @@ func (j *Job) Start(outputChan chan loadtest.Output) (err error) {
 	return
 }
 
-func (j *Job) initialiseJob(outputChan chan loadtest.Output) (err error) {
+func (j *Job) initialiseJob(outputChan chan golo.Output) (err error) {
 	err = j.openLogFile()
 	if err != nil {
 		return
@@ -152,7 +152,7 @@ func (j *Job) initialiseRPC() (err error) {
 
 func (j *Job) TryConnect() (err error) {
 	log.Print("try connect")
-	j.connection, err = net.Dial("tcp", loadtest.RPCAddr)
+	j.connection, err = net.Dial("tcp", golo.RPCAddr)
 
 	return
 }
@@ -162,7 +162,7 @@ func (j *Job) TryRequest() (err error) {
 		log.Print("try request")
 	}
 
-	err = j.service.Call(RPCCommand, &loadtest.NullArg{}, &loadtest.NullArg{})
+	err = j.service.Call(RPCCommand, &golo.NullArg{}, &golo.NullArg{})
 
 	if err != nil && !j.complete {
 		return
@@ -237,7 +237,7 @@ func (j *Job) tail() (err error) {
 			line = scanner.Bytes()
 			go j.logline(line)
 
-			// For now we unmarshal output back into a loadtest.Output
+			// For now we unmarshal output back into a golo.Output
 			// as a way of ensuring the content read from the binary is
 			// valid to be sent to the collector endpoint. This is to ensure
 			// that the collector has largely decent data to work with, and
@@ -249,9 +249,9 @@ func (j *Job) tail() (err error) {
 			// of all of this unmarshalling/ marshalling back and forth.
 			// It's also a bit of a false assumption- if the body of the
 			// line from the scheduler is a valid json object then we're
-			// still going to have a loadtest.Output- it just either wont
+			// still going to have a golo.Output- it just either wont
 			// contain anything, or what it does contain will be garbage.
-			o := new(loadtest.Output)
+			o := new(golo.Output)
 
 			err = json.Unmarshal(line, o)
 			if err != nil {

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 type httpClient interface {
@@ -45,7 +45,7 @@ func NewCollector(host, db string) (c Collector, err error) {
 	return
 }
 
-func (c Collector) Push(o loadtest.Output) (err error) {
+func (c Collector) Push(o golo.Output) (err error) {
 	r := bytes.NewBufferString(o.String())
 	c.request.Body = ioutil.NopCloser(r)
 

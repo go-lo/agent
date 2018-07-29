@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 type collectorClient struct {
@@ -57,12 +57,12 @@ func TestCollector_Push(t *testing.T) {
 		host        string
 		db          string
 		client      httpClient
-		output      loadtest.Output
+		output      golo.Output
 		expectError bool
 	}{
-		{"happy path", "example.com", "test", collectorClient{status: 200}, loadtest.Output{}, false},
-		{"client non 200", "example.com", "test", collectorClient{status: 500}, loadtest.Output{}, true},
-		{"client error", "example.com", "test", collectorClient{err: true}, loadtest.Output{}, true},
+		{"happy path", "example.com", "test", collectorClient{status: 200}, golo.Output{}, false},
+		{"client non 200", "example.com", "test", collectorClient{status: 500}, golo.Output{}, true},
+		{"client error", "example.com", "test", collectorClient{err: true}, golo.Output{}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			c, _ := NewCollector(test.host, test.db)
