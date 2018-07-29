@@ -18,7 +18,7 @@ const (
 
 var (
 	collector = flag.String("collector", "http://localhost:8082", "Collector endpoint")
-	insecure  = flag.Bool("insecure", false, "Allow access to https endpoints with shit certs")
+	insecure  = flag.Bool("insecure", false, "Allow access to https endpoints with invalid certs/ certificate chains")
 	logDir    = flag.String("logs", "/var/log/loadtest-agent", "Dir to log to")
 
 	cooldownSeconds = 60.0
