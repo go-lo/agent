@@ -10,14 +10,23 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+// Binaries contains all of the binaries uploaded to the server
+// *inside this current executaion of the server* - this is because
+// that should the server go away, there's no guarantee that the
+// binary will even valid/ usable/ available any more, so we don't
+// even bother persisting this data
 type Binaries map[string]binary
 
+// NewBinaries will return a reference to a Binaries, ready to use
 func NewBinaries() *Binaries {
 	b := make(Binaries)
 
 	return &b
 }
 
+// Add will safely update Binaries with a new binary. It will error
+// if a binary with this UUID exists- we do this to avoid overwriting
+// a binary in case of UUID collision
 func (b *Binaries) Add(bin binary) error {
 	_, ok := (*b)[bin.Name]
 	if ok {
@@ -29,8 +38,9 @@ func (b *Binaries) Add(bin binary) error {
 	return nil
 }
 
-func (c *Binaries) Valid(s string) bool {
-	_, ok := (*c)[s]
+// Valid returns true if a UUID is a valid binary
+func (b *Binaries) Valid(s string) bool {
+	_, ok := (*b)[s]
 
 	return ok
 }

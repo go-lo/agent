@@ -14,6 +14,7 @@ type httpClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
+// Collector is an API client for the collector service
 type Collector struct {
 	Database string
 
@@ -21,6 +22,9 @@ type Collector struct {
 	request *http.Request
 }
 
+// NewCollector will return a collector client, and pre-generate
+// a request to be used each time we call- this should reduce the
+// work needed to make each call
 func NewCollector(host, db string) (c Collector, err error) {
 	if host == "" {
 		err = fmt.Errorf("Host cannot be empty")
@@ -45,6 +49,8 @@ func NewCollector(host, db string) (c Collector, err error) {
 	return
 }
 
+// Push will take a golo.Output and send it to a collector
+// to be handled there
 func (c Collector) Push(o golo.Output) (err error) {
 	r := bytes.NewBufferString(o.String())
 	c.request.Body = ioutil.NopCloser(r)

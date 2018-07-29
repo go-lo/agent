@@ -1,14 +1,14 @@
 default: clean test build docker
 
 .PHONY: build
-build: clean loadtest-agent
+build: clean agent
 
-loadtest-agent:
+agent:
 	CGO_ENABLED=0 GOOS=linux go build
 
 .PHONY: clean
 clean:
-	-rm loadtest-agent
+	-rm agent
 
 .PHONY: test
 test: deps
@@ -20,5 +20,5 @@ deps:
 
 .PHONY: docker
 docker:
-	docker build -t jspc/loadtest-agent .
-	docker push jspc/loadtest-agent
+	docker build -t goload/agent .
+	docker push goload/agent
