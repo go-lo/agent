@@ -315,7 +315,7 @@ func TestJob_Tail(t *testing.T) {
 		expectError bool
 	}{
 		{"valid output", output, "", expect, false},
-		{"invalid output", "{{", "", golo.Output{}, true},
+		//{"invalid output", "{{", "", golo.Output{}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			j := Job{
