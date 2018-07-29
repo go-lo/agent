@@ -1,7 +1,7 @@
 default: clean test build docker
 
 .PHONY: build
-build: clean loadtest-agent
+build: clean agent
 
 agent:
 	CGO_ENABLED=0 GOOS=linux go build
