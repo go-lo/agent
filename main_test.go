@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -59,4 +60,18 @@ func TestSetup(t *testing.T) {
 	if c.Database != DeadLetterDatabase {
 		t.Errorf("c.Database has been initialised with the wrong database. Should be %q, is %q", DeadLetterDatabase, c.Database)
 	}
+}
+
+func TestMain(t *testing.T) {
+	defer func() {
+		err := recover()
+		if err == nil {
+			t.Errorf("expected a panic")
+		}
+	}()
+
+	l, _ := net.Listen("tcp", ":8081")
+	defer l.Close()
+
+	main()
 }
