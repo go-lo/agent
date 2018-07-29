@@ -315,7 +315,7 @@ func TestJob_Tail(t *testing.T) {
 		expectError bool
 	}{
 		{"valid output", output, "", expect, false},
-		//		{"invalid output", "{{", "", golo.Output{}, true},
+		{"invalid output", "{{", "", golo.Output{}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			j := Job{
@@ -328,7 +328,7 @@ func TestJob_Tail(t *testing.T) {
 
 			go func() {
 				// Let buffers fill a bit
-				time.Sleep(1 * time.Second)
+				time.Sleep(2 * time.Second)
 				j.complete = true
 			}()
 
@@ -347,18 +347,6 @@ func TestJob_Tail(t *testing.T) {
 				t.Errorf("expected error")
 			}
 
-			if !test.expectError {
-				if err != nil {
-					t.Errorf("unexpected error %+v", err)
-				}
-
-				if test.stdout != "" {
-					if !reflect.DeepEqual(output, test.expect) {
-						t.Errorf("expected %+v, received %+v", test.expect, output)
-					}
-				}
-			}
-
 			t.Run("stdout sanity", func(t *testing.T) {
 				m := j.logfile.(*bytes.Buffer).String()
 				if test.stdout != m {
@@ -372,6 +360,18 @@ func TestJob_Tail(t *testing.T) {
 					t.Errorf("expected %q, received %q", test.stderr, m)
 				}
 			})
+
+			if !test.expectError {
+				if err != nil {
+					t.Errorf("unexpected error %+v", err)
+				}
+
+				if test.stdout != "" {
+					if !reflect.DeepEqual(output, test.expect) {
+						t.Errorf("expected %+v, received %+v", test.expect, output)
+					}
+				}
+			}
 		})
 	}
 }
