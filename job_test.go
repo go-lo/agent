@@ -272,7 +272,11 @@ func TestJob_Start(t *testing.T) {
 			}
 
 			if test.doRPC {
-				l, _ := net.Listen("tcp", golo.RPCAddr)
+				l, err := net.Listen("tcp", golo.RPCAddr)
+				if err != nil {
+					t.Fatalf("unexpected error starting server: %+v", err)
+				}
+
 				defer l.Close()
 
 				s := rpc.NewServer()
