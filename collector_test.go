@@ -56,17 +56,20 @@ func TestCollector_Push(t *testing.T) {
 		name        string
 		host        string
 		db          string
+		queueLen    int
 		client      httpClient
 		output      golo.Output
 		expectError bool
 	}{
-		{"happy path", "example.com", "test", collectorClient{status: 200}, golo.Output{}, false},
-		{"client non 200", "example.com", "test", collectorClient{status: 500}, golo.Output{}, true},
-		{"client error", "example.com", "test", collectorClient{err: true}, golo.Output{}, true},
+		{"happy path", "example.com", "test", 1, collectorClient{status: 200}, golo.Output{}, false},
+		{"client non 200", "example.com", "test", 1, collectorClient{status: 500}, golo.Output{}, true},
+		{"client error", "example.com", "test", 1, collectorClient{err: true}, golo.Output{}, true},
+		{"multiple requests queue", "example.com", "test", 10, collectorClient{}, golo.Output{}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			c, _ := NewCollector(test.host, test.db)
 			c.client = test.client
+			c.queueLen = test.queueLen
 
 			err := c.Push(test.output)
 			if test.expectError && err == nil {
@@ -75,6 +78,12 @@ func TestCollector_Push(t *testing.T) {
 
 			if !test.expectError && err != nil {
 				t.Errorf("unexpected error %+v", err)
+			}
+
+			if test.queueLen > 1 {
+				if len(c.queue) != 1 {
+					t.Errorf("output did not queue")
+				}
 			}
 		})
 	}

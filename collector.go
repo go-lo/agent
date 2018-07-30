@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/go-lo/go-lo"
 )
@@ -20,6 +22,10 @@ type Collector struct {
 
 	client  httpClient
 	request *http.Request
+
+	queueLen   int
+	queue      []golo.Output
+	queueMutex *sync.Mutex
 }
 
 // NewCollector will return a collector client, and pre-generate
@@ -46,32 +52,51 @@ func NewCollector(host, db string) (c Collector, err error) {
 
 	c.client = &http.Client{}
 
+	c.queueLen = 32
+	c.queue = make([]golo.Output, 0)
+	c.queueMutex = new(sync.Mutex)
+
 	return
 }
 
 // Push will take a golo.Output and send it to a collector
 // to be handled there
-func (c Collector) Push(o golo.Output) (err error) {
-	r := bytes.NewBufferString(o.String())
-	c.request.Body = ioutil.NopCloser(r)
+func (c *Collector) Push(o golo.Output) (err error) {
+	c.queueMutex.Lock()
+	defer c.queueMutex.Unlock()
 
-	c.request.URL.Path = fmt.Sprintf("/push/%s", c.Database)
+	c.queue = append(c.queue, o)
+	if len(c.queue) >= c.queueLen {
+		var queueBytes []byte
+		queueBytes, err := json.Marshal(c.queue)
+		if err != nil {
+			return err
+		}
 
-	resp, err := c.client.Do(c.request)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
+		r := bytes.NewBufferString(string(queueBytes))
+		c.request.Body = ioutil.NopCloser(r)
 
-	if resp.StatusCode != 200 {
-		b, _ := ioutil.ReadAll(resp.Body)
+		c.request.URL.Path = fmt.Sprintf("/push/%s", c.Database)
 
-		err = fmt.Errorf("%s on %s returned %s - %s",
-			c.request.Method,
-			c.request.URL.String(),
-			resp.Status,
-			string(b),
-		)
+		var resp *http.Response
+		resp, err = c.client.Do(c.request)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			b, _ := ioutil.ReadAll(resp.Body)
+
+			return fmt.Errorf("%s on %s returned %s - %s",
+				c.request.Method,
+				c.request.URL.String(),
+				resp.Status,
+				string(b),
+			)
+		}
+
+		c.request = nil
 	}
 
 	return
