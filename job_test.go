@@ -138,12 +138,15 @@ func TestLoggingOut(t *testing.T) {
 	j.logline([]byte(l))
 	j.logerr([]byte(e))
 
-	if l != j.logfile.(*bytes.Buffer).String() {
-		t.Errorf("expected %q, receved %q", l, j.logfile.(*bytes.Buffer).String())
+	rcvdL := fmt.Sprintf("%s\n", l)
+	rcvdE := fmt.Sprintf("%s\n", e)
+
+	if rcvdL != j.logfile.(*bytes.Buffer).String() {
+		t.Errorf("expected %q, receved %q", rcvdL, j.logfile.(*bytes.Buffer).String())
 	}
 
-	if e != j.errfile.(*bytes.Buffer).String() {
-		t.Errorf("expected %q, receved %q", e, j.errfile.(*bytes.Buffer).String())
+	if rcvdE != j.errfile.(*bytes.Buffer).String() {
+		t.Errorf("expected %q, receved %q", rcvdE, j.errfile.(*bytes.Buffer).String())
 	}
 }
 
@@ -352,16 +355,24 @@ func TestJob_Tail(t *testing.T) {
 			}
 
 			t.Run("stdout sanity", func(t *testing.T) {
-				m := j.logfile.(*bytes.Buffer).String()
-				if test.stdout != m {
-					t.Errorf("expected %q, received %q", test.stdout, m)
+				if test.stdout != "" {
+					m := j.logfile.(*bytes.Buffer).String()
+					e := fmt.Sprintf("%s\n", test.stdout)
+
+					if e != m {
+						t.Errorf("expected %q, received %q", e, m)
+					}
 				}
 			})
 
 			t.Run("stderr sanity", func(t *testing.T) {
-				m := j.errfile.(*bytes.Buffer).String()
-				if test.stderr != m {
-					t.Errorf("expected %q, received %q", test.stderr, m)
+				if test.stderr != "" {
+					m := j.errfile.(*bytes.Buffer).String()
+					e := fmt.Sprintf("%s\n", test.stderr)
+
+					if e != m {
+						t.Errorf("expected %q, received %q", e, m)
+					}
 				}
 			})
 
