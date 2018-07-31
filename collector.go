@@ -96,7 +96,7 @@ func (c *Collector) Push(o golo.Output) (err error) {
 			)
 		}
 
-		c.request = nil
+		c.queue = nil
 	}
 
 	return
