@@ -313,5 +313,5 @@ func (j Job) logline(line []byte) {
 }
 
 func (j Job) log(f io.Writer, line []byte) {
-	fmt.Fprint(f, string(line))
+	fmt.Fprintf(f, "%s\n", string(line))
 }
