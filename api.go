@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"net/http/pprof"
 )
 
 // API exposes two routes:
@@ -25,21 +23,6 @@ func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case "/queue":
 		a.Queue(w, r)
-
-	case "/debug/pprof/":
-		pprof.Index(w, r)
-
-	case "/debug/pprof/cmdline":
-		pprof.Cmdline(w, r)
-
-	case "/debug/pprof/profile":
-		pprof.Profile(w, r)
-
-	case "/debig/pprof/symbol":
-		pprof.Symbol(w, r)
-
-	case "/debug/pprof/trace":
-		pprof.Trace(w, r)
 
 	default:
 		http.Error(w, fmt.Sprintf("%q does not exist", r.URL.Path), http.StatusNotFound)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-lo/go-lo"
+	_ "net/http/pprof"
 )
 
 const (
@@ -27,6 +28,11 @@ var (
 
 func main() {
 	flag.Parse()
+
+	// pprof
+	go func() {
+		log.Fatal(http.ListenAndServe(":8082", nil))
+	}()
 
 	api, collector, err := Setup(*insecure, *collector, "/tmp")
 	if err != nil {
