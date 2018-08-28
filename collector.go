@@ -52,7 +52,7 @@ func NewCollector(host, db string) (c Collector, err error) {
 
 	c.client = &http.Client{}
 
-	c.queueLen = 32
+	c.queueLen = 256
 	c.queue = make([]golo.Output, 0)
 	c.queueMutex = new(sync.Mutex)
 
