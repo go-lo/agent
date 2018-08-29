@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/abiosoft/semaphore"
@@ -87,7 +88,17 @@ func (j *Job) Start(outputChan chan golo.Output) (err error) {
 	defer func() {
 		if j.process != nil {
 			j.process.Kill()
-			j.process.Wait()
+
+			state, _ := j.process.Wait()
+			if !state.Success() {
+				status := state.Sys().(syscall.WaitStatus)
+
+				log.Printf("%s exited with status %d, stop signal %s",
+					j.Binary,
+					status.ExitStatus(),
+					status.Signal(),
+				)
+			}
 		}
 	}()
 
@@ -120,7 +131,6 @@ func (j *Job) Start(outputChan chan golo.Output) (err error) {
 	}()
 
 	time.Sleep(time.Duration(j.Duration) * time.Second)
-
 	j.complete = true
 
 	return
