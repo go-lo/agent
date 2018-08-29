@@ -130,7 +130,28 @@ func (j *Job) Start(outputChan chan golo.Output) (err error) {
 		}
 	}()
 
-	time.Sleep(time.Duration(j.Duration) * time.Second)
+	start := time.Now()
+
+	// Once a second test whether we've gone past the expected duration of a test.
+	// If we have, break out. If not then try and determine whether the schedule is
+	// still running by signalling to it. If it no longer exists, break out also.
+	//
+	// If the PID is reassigned to another long running process in the time between
+	// crash and tick then this supervisor will, erroneously, believe the scheule is
+	// still running. The probability of this is, happily, low enough that this solution
+	// is Good Enough tm
+	ticker := time.Tick(1 * time.Second)
+	for _ = range ticker {
+		if time.Since(start).Seconds() >= float64(j.Duration) {
+			break
+		}
+
+		err = j.process.Signal(syscall.SIGUSR1)
+		if err != nil {
+			break
+		}
+	}
+
 	j.complete = true
 
 	return
