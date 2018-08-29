@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/abiosoft/semaphore"
@@ -87,7 +88,17 @@ func (j *Job) Start(outputChan chan golo.Output) (err error) {
 	defer func() {
 		if j.process != nil {
 			j.process.Kill()
-			j.process.Wait()
+
+			state, _ := j.process.Wait()
+			if !state.Success() {
+				status := state.Sys().(syscall.WaitStatus)
+
+				log.Printf("%s exited with status %d, stop signal %s",
+					j.Binary,
+					status.ExitStatus(),
+					status.Signal(),
+				)
+			}
 		}
 	}()
 
@@ -119,7 +130,27 @@ func (j *Job) Start(outputChan chan golo.Output) (err error) {
 		}
 	}()
 
-	time.Sleep(time.Duration(j.Duration) * time.Second)
+	start := time.Now()
+
+	// Once a second test whether we've gone past the expected duration of a test.
+	// If we have, break out. If not then try and determine whether the schedule is
+	// still running by signalling to it. If it no longer exists, break out also.
+	//
+	// If the PID is reassigned to another long running process in the time between
+	// crash and tick then this supervisor will, erroneously, believe the scheule is
+	// still running. The probability of this is, happily, low enough that this solution
+	// is Good Enough tm
+	ticker := time.Tick(1 * time.Second)
+	for _ = range ticker {
+		if time.Since(start).Seconds() >= float64(j.Duration) {
+			break
+		}
+
+		err = j.process.Signal(syscall.SIGUSR1)
+		if err != nil {
+			break
+		}
+	}
 
 	j.complete = true
 

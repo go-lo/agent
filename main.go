@@ -78,6 +78,8 @@ func JobHandler(collector Collector, jobs chan Job) {
 		outputs := make(chan golo.Output)
 
 		var lastRead time.Time
+		lastRead = time.Now() // cover cases where no outputs are set
+
 		go func() {
 			for o := range outputs {
 				lastRead = time.Now()
