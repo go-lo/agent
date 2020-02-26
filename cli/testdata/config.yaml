@@ -1,5 +1,5 @@
 version: job:latest
-schema:
+job:
     name: "my loadtest"
     users: 1024
     duration: 900

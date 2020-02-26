@@ -12,13 +12,13 @@ var (
     payloadFile = flag.String("f", "payload.yaml", "YAML file containing go-lo definition")
 )
 
-func Payload(filename string) (p *agent.Payload, err error) {
+func Payload(filename string) (p agent.Payload, err error) {
     data, err := ioutil.ReadFile(filename)
     if err != nil {
         return
     }
 
-    err = yaml.Unmarshal(data, p)
+    err = yaml.Unmarshal(data, &p)
 
     return
 }

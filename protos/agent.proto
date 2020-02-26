@@ -8,9 +8,7 @@ service Agent {
 
 message Payload {
   string version = 1;
-  oneof payloadSchema {
-    Job schema = 2;
-  }
+  Job job = 2;
 }
 
 message Job {
