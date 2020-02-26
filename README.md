@@ -16,7 +16,7 @@ schema:
     users: 1024
     duration: 900
     container: somecontainer:latest
-    ```
+```
 
 It will then enqueue this job- only one job is run at a time; multiple running jobs can affect results by creating agent network contention.
 
