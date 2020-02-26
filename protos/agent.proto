@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package agent;
+
+service Agent {
+  rpc Create(Payload) returns (Response) {}
+}
+
+message Payload {
+  string version = 1;
+  oneof payloadSchema {
+    Job schema = 2;
+  }
+}
+
+message Job {
+  string name = 1;
+  uint32 users = 2;
+  uint32 duration = 3;
+  string container = 4;
+}
+
+message Response {
+  bool error = 1;
+  string output = 2;
+}

@@ -1,0 +1,6 @@
+version: job:latest
+schema:
+    name: "my loadtest"
+    users: 1024
+    duration: 900
+    container: somecontainer:latest
