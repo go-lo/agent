@@ -1,24 +1,11 @@
-default: clean test build docker
-
-.PHONY: build
-build: clean agent
-
-agent:
-	CGO_ENABLED=0 GOOS=linux go build
-
-.PHONY: clean
-clean:
-	-rm agent
+default: test
 
 .PHONY: test
-test: deps
+test:
 	go test -v -covermode=count -coverprofile="./count.out" ./...
 
-.PHONY: deps
-deps:
-	go get -u -v ./...
+agent/:
+	mkdir -p agent/
 
-.PHONY: docker
-docker:
-	docker build -t goload/agent .
-	docker push goload/agent
+agent/agent.pb.go: agent/
+	protoc -I protos/ protos/agent.proto --go_out=plugins=grpc:agent/

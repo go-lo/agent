@@ -5,58 +5,30 @@
 
 # Agent
 
-Agent provides an API which exposes a series of endpoints, documented below, which allow a user to upload and queue a loadtest and schedule to loadtest endpoints.
+The go-lo Agent exposes a set of gRPC endpoints designed to run go-lo Loadtests, as created with [go-lo/go-lo](https://github.com/go-lo/go-lo), which are packed into containers.
 
-The best way to interact with this tool is with [golo-cli](github.com/go-lo/golo-cli).
+The agent takes a schedule which looks like:
 
-Loadtest binaries are run as self contained executables- they're expected to expose an RPC server and print results to STDOUT in a specific line format. The easiest way of doing this is to implement the loadtest binary using [github.com/go-lo/go-lo](https://github.com/go-lo/go-lo), but any binary which implements, at a minimum [server.Run()](https://godoc.org/github.com/go-lo/go-lo#Server.Run) and prints json fulfilling [Output](https://godoc.org/github.com/go-lo/go-lo#Output) can be passed to an agent to be run.
+```yaml
+version: job:latest
+schema:
+    name: "my loadtest"
+    users: 1024
+    duration: 900
+    container: somecontainer:latest
+    ```
 
-## Usage
+It will then enqueue this job- only one job is run at a time; multiple running jobs can affect results by creating agent network contention.
 
-The best way to use this application is via docker:
+When running a job, an agent will:
 
-```bash
-$ docker run -p8081:8081 -v $(pwd)/logs:/var/log/loadtest-agent goload/agent
-```
-
-This will volume mount stdout/err logs from binaries, as run, to ./logs - which can aid debugging.
-
-This application accepts a series of command line flags:
-
-```bash
-$ docker run goload/agent --help
-Usage of /agent:
-  -collector string
-        Collector endpoint (default "http://localhost:8082")
-  -insecure
-        Allow access to https endpoints with invalid certs/ certificate chains
-  -logs string
-        Dir to log to (default "/var/log/loadtest-agent")
-```
-
-## API endpoints
-
-Uploading and Queueing operations are done via an HTTP API. For sample implementation, see: [github.com/go-lo/golo-client/client.go](https://github.com/go-lo/golo-cli/blob/master/client.go)
-
-### POST `/queue`
-
-This endpoint takes a file encoded in a multipart form- see [here](html/upload.html) for an HTML representation of this.
-
-| Status | Message                                     | Description                                                        |
-|--------|---------------------------------------------|--------------------------------------------------------------------|
-| 400    | `http: no such file`                        | The form field `file` was empty                                    |
-| 400    | `open /some/path no such file or directory` | Not enough permissions to write uploads                            |
-| 400    | `Binary $some_uuid exists`                  | Somehow, the same UUID was generated twice. Try again, raise a bug |
-| 200    | `{"binary": "some-uuid"}`                   | Success! This binary ID will be needed when queueing the job       |
+1. Run the container, exposing the job's gRPC server
+1. Try to connect to the job container, following an exponential backoff strategy
+1. Create a pool of 1024 users, each of which will trigger a job run every second
+1. After 900 seconds have elapsed, close the user pool, and kill the container
+1. Wait for another job to schedule
 
 
-### POST `/queue`
+## Interacting with the Agent
 
-This endpoint takes a [Job](https://github.com/go-lo/agent/blob/master/job.go#L39), in json form, and starts it
-
-| Status | Message                                | Description                                                      |
-|--------|----------------------------------------|------------------------------------------------------------------|
-| 400    | `invalid character '' looking for....` | The request json body was invalid                                |
-| 500    | any 500                                | Could not read request body                                      |
-| 400    | `$some_uuid is an invalid binary`      | UUID not a valid binary on this instance- try re-up, or open bug |
-| 201    | `{"queued": true}`                     | Success!                                                         |
+This project comes with a cli
